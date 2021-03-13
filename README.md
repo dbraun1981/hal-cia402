@@ -14,9 +14,9 @@ The concept of integration in the correspondending task should be as following:
 
 
   HARDWARE INPUT-->--CiA402_read-->--Motion-->--CiA402_write-->--Hardware Output
-   (lcec_read)                                                    (lcec_write)
 
 Hal Example:
+
   #Setup
 
   loadrt [KINS]KINEMATICS
