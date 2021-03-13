@@ -1,0 +1,310 @@
+component cia402 "HAL CiA402 Drive interface layer";
+//
+//    Copyright (C) 2019 Dominik Braun <dominik.braun@eventor.de>
+//
+//    This program is free software; you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation; either version 2 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program; if not, write to the Free Software
+//    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+//
+author "Dominik Braun";
+license "GPL";
+
+description """
+HAL Interface for CiA402 Devices,
+
+this component acts as a glue layer between hardware to Hal modules like Ethercat, CAN-Bus or others.\n
+It translates raw IO Data from the PDOs to the common linuxcnc Hal pin structure and has build in logic\n
+ 
+for the CiA402 State Control, feedback handling, external homing and build in scaling functions.\n
+
+It delivers two functions: read_all and write_all.\n
+The concept of integration in the correspondending task should be as following: \n
+
+
+
+###################      ###########       #########     ############      #####################\n
+#HARDWARE INPUT   #      # CiA402  #       #Motion #     #  CiA402  #      #  Hardware Output  #\n
+#  like           #-->>--#read_all #-->>>--#Pids   #-->--#write_all #-->>--#        like       #\n
+#Ethercat read_all#      #  etc.   #       #       #     #          #      # Ethercat write_all#\n
+###################      ###########       #########     ############      #####################\n
+\n
+Hal Example:\n
+
+#########\n
+# Setup\n
+#########\n
+
+
+loadrt [KINS]KINEMATICS\n
+loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS\n
+(loadusr -W lcec_conf ethercat-conf.xml)\n
+loadrt lcec\n
+loadrt cia402 count=3\n
+loadrt pid names=x-pid,y-pid,z-pid\n
+
+##########################\n
+# Functions servo-thread\n
+##########################\n
+addf lcec.read-all servo-thread\n
+addf cia402.0.read-all servo-thread\n
+addf cia402.1.read-all servo-thread\n
+addf cia402.2.read-all servo-thread\n
+
+addf motion/ PIDs / PCL / etc .\n
+
+addf cia402.0.write-all servo-thread\n
+addf cia402.1.write-all servo-thread\n
+addf cia402.2.write-all servo-thread\n
+addf lcec.write-all servo-thread\n
+#########################################\n
+#nets .....\n
+
+By default the component is set to CSP Mode,\n
+CSV Mode could be selected with an:\n 
+setp cia402.0.csp-mode 0  in hal.\n
+Mode changing in runtime is currently not supported, to avoid\n
+unwanted behaviour.\n 
+
+For using the servo drives internal homing procedure configure your\n
+joint homing to  Home on Index Pulse only and connect the components\n
+home Input to the index-enable Pin:\n
+
+HOME_SEARCH_VEL = 0.0\n
+HOME_LATCH_VEL = 0.2  (Any value but zero, the homing speed is predetermined by the drives configured speed\n
+HOME_USE_INDEX = TRUE\n
+
+If you are using PIDs, don't forget to connect the PIDs index-enable pin.\n
+
+
+Even though this component exports many pins, you can choose which functions you want to use:\n
+
+If you would like to use the CiA State Machine, connect Statusword and Controlword.\n
+For single use of the scaling function connect only the fb and cmd pins from position or velocity.\n
+If no Drives homing is needed, let the Pins unconnected.""";
+
+//CiA IOs
+//inputs from drive
+pin in unsigned statusword        "Drives CiA402 Statusword, index 0x6041";
+pin in signed opmode_display      "Drives Modes of Operation feedback register, index 0x6061"; 
+pin in signed drv_actual_position "Drives actual Position, index 0x6064";
+pin in signed drv_actual_velocity "Drives actual Velocity, index 0x606C";
+//outputs to drive
+pin out unsigned controlword    "Drives CIA402 Controlword, index 0x6040";
+pin out signed opmode           "Drives Modes of Operation Input, index 0x6060";
+pin out signed drv_target_position  "Position command to the drive, index 0x607A";
+pin out signed drv_target_velocity  "Velocity command to the drive, index 0x60FF";
+
+//Control IOs
+pin in bit enable     "true enables the Drive";
+pin in float pos_cmd  "target Position, from Motion or PID";
+pin in float velocity_cmd "target Velocity, from Motion or PID";
+
+pin out float pos_fb      "Position feedback, scaled";
+pin out float velocity_fb "Velocity feedback scaled";
+pin out bit drv_fault     "true indicates an Drive Error";
+
+//Homing IOs
+pin io bit home         "true starts the Drives internal home procedure, connect this to joint.x.index-enable pin";
+pin out bit stat_homed  "true indicates that the Drive is internaly homed";
+pin out bit stat_homing "true indicates that the Drives homing procedure is running";
+//Auxilary IOs
+pin out bit stat_switchon_ready   "Drive in CiA State: ready to switch on";
+pin out bit stat_switched_on      "Drive in CiA State: switched on";
+pin out bit stat_op_enabled       "Drive in CiA State: Operation enabled";
+pin out bit stat_voltage_enabled  "Drive in CiA State: switched on, Voltage enabled";
+pin out bit stat_fault            "Drive hast the fault bit set";
+pin out bit stat_quick_stop       "Drive in State: Quick Stop";
+pin out bit stat_switchon_disabled  "Drive in CiA State: Switch on disabled";
+pin out bit stat_warning          "Drive has the warning bit set";
+pin out bit stat_remote           "Drive in State remote / bus operation";
+pin out bit stat_target_reached   "Drive has reached target position / velocity";
+pin out bit opmode_no_mode        "Drive has no operation Mode set";
+pin out bit opmode_homing         "Drive in Mode Homing";
+pin out bit opmode_cyclic_position  "Drive in Mode Cyclic synchronus Position";
+pin out bit opmode_cyclic_velocity  "Drive in Mode Cyclic synchronus Velocity";
+
+pin in bit fault_reset  "true, sends fault reset command to the Drive";
+
+//parameters
+param rw float pos_scale    "increments per machine unit";
+param rw float velo_scale   "velocity in machine units per 1 Motor revolution";
+param rw bit auto_fault_reset "true resets an actual Drive Fault automatically at the next enable Signal";
+param rw bit csp_mode "true= CS Position Mode, false= CS Velocity Mode, is only recognized at Linuxcnc Startup, default true";
+
+//internals
+variable float pos_scale_old;
+variable float velo_scale_old;
+variable bool  enable_old;
+variable bool stat_homed_old;
+variable bool stat_fault_old;
+variable double pos_scale_rcpt;
+variable double velo_scale_rcpt;
+variable bool pos_mode;
+variable bool init_pos_mode = 0;
+variable long auto_fault_reset_delay;
+
+//declare functions
+function read_all;
+function write_all;
+option extra_setup yes;
+
+;;
+
+//constants
+#define FAULT_AUTORESET_DELAY_NS 100000000LL
+#define OPMODE_CYCLIC_POSITION 8
+#define OPMODE_CYCLIC_VELOCITY 9
+#define OPMODE_HOMING 6
+#define OPMODE_NONE 0
+
+EXTRA_SETUP ()  {
+  // initialize variables
+  pos_scale = 1.0;
+  pos_scale_old = pos_scale + 1.0;
+  pos_scale_rcpt = 1.0;
+  velo_scale = 1.0;
+  velo_scale_old = velo_scale + 1.0;
+  velo_scale_rcpt = 1.0;
+  auto_fault_reset = 1;
+  csp_mode = 1; 
+  return 0;
+}
+
+void check_scales(hal_float_t *scale,float *scale_old, double *scale_rcpt) {
+  // check for change in scale value
+  if (*scale != *scale_old) {
+    // scale value has changed, test and update it
+    if ((*scale < 1e-20) && (*scale > -1e-20)) {
+      // value too small, divide by zero is a bad thing
+      *scale = 1.0;
+    }
+    // save new scale to detect future changes
+    *scale_old = *scale;
+    // we actually want the reciprocal
+    *scale_rcpt = 1.0 / *scale;
+  }
+}
+  
+FUNCTION(read_all) {
+
+  // check for change in scale value
+  check_scales(&pos_scale, &pos_scale_old, &pos_scale_rcpt);
+  check_scales(&velo_scale, &velo_scale_old, &velo_scale_rcpt);
+
+  // read position feedback
+  pos_fb = ((double)drv_actual_position) * pos_scale_rcpt;
+
+  // read velocity feedback
+  velocity_fb = ((double)drv_actual_velocity) * velo_scale_rcpt;
+
+  // read Modes of Operation
+  opmode_no_mode = (opmode_display == OPMODE_NONE);
+  opmode_homing = (opmode_display == OPMODE_HOMING);
+  opmode_cyclic_velocity = (opmode_display == OPMODE_CYCLIC_VELOCITY);
+  opmode_cyclic_position = (opmode_display == OPMODE_CYCLIC_POSITION);
+ 
+  // read status
+  stat_switchon_ready    = (statusword >> 0) & 1;
+  stat_switched_on       = (statusword >> 1) & 1;
+  stat_op_enabled        = (statusword >> 2) & 1;
+  stat_fault             = (statusword >> 3) & 1;
+  stat_voltage_enabled   = (statusword >> 4) & 1;
+  stat_quick_stop        = (statusword >> 5) & 1;
+  stat_switchon_disabled = (statusword >> 6) & 1;
+  stat_warning           = (statusword >> 7) & 1;
+  stat_remote            = (statusword >> 9) & 1;
+
+  if (opmode_cyclic_position || opmode_cyclic_velocity) {
+    stat_target_reached = (statusword >> 10) & 1;
+    } else {
+      stat_target_reached = 0;
+    }
+
+  //home states  
+  if (opmode_homing) {
+    stat_homed    = ((statusword >> 10) & 1) && ((statusword >> 12) & 1);
+    stat_homing   = !stat_homed && !((statusword >> 10) & 1);
+  }
+
+  // update fault output
+  if (auto_fault_reset_delay > 0) {
+    auto_fault_reset_delay -= period;
+    drv_fault = 0;
+  } else {
+    drv_fault = stat_fault && enable;
+  }
+}
+
+FUNCTION(write_all) {
+  int enable_edge;
+
+  //init opmode
+  if (!init_pos_mode) {
+    pos_mode = csp_mode;
+    init_pos_mode = 1;
+  }
+
+  // detect enable edge
+  enable_edge = enable && !enable_old;
+  enable_old = enable;
+
+  // write control register
+  controlword = (1 << 2); // quick stop is not supported
+  if (stat_fault) {
+    home = 0; 
+    if (fault_reset) {
+      controlword |= (1 << 7); // fault reset
+    }
+    if (auto_fault_reset && enable_edge) {
+      auto_fault_reset_delay = FAULT_AUTORESET_DELAY_NS;
+      controlword |= (1 << 7); // fault reset
+    }
+  } else {
+    if (enable) {
+      controlword |= (1 << 1); // enable voltage
+      if (stat_switchon_ready) {
+        controlword |= (1 << 0); // switch on
+        if (stat_switched_on) {
+          controlword |= (1 << 3); // enable op
+        }
+      }
+    }
+  }
+
+  // write position command
+  drv_target_position = (int32_t) (pos_cmd * pos_scale);
+  // write velocity command
+  drv_target_velocity = (int32_t) (velocity_cmd * velo_scale);
+
+  // reset home command   
+  if (home && (stat_homed && !stat_homed_old) && opmode_homing) {
+    home = 0;
+  }
+  stat_homed_old = stat_homed;  
+
+  // OP Mode 
+  // set to position mode 
+  if (stat_voltage_enabled && !home ) {
+    opmode = OPMODE_CYCLIC_POSITION;
+  }
+  // set velo mode
+  if (stat_voltage_enabled && !pos_mode && !home) {
+    opmode = OPMODE_CYCLIC_VELOCITY;
+  }
+  // mode Home and start homing
+  if (home) {
+    opmode = OPMODE_HOMING;
+    controlword |= (home << 4);  
+  }
+}
+
