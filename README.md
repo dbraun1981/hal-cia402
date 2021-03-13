@@ -2,6 +2,7 @@
 HAL Interface for CiA402 Devices,
 
 this component acts as a glue layer between hardware to Hal modules like Ethercat, CAN-Bus or others.
+
 It translates raw IO Data from the PDOs to the common linuxcnc Hal pin structure and has build in logic
 for the CiA402 State Control, feedback handling, external homing and build in scaling functions.
 
@@ -12,20 +13,22 @@ The concept of integration in the correspondending task should be as following:
 
 
 
-  ###################      ###########       #########     ############      #####################\n
-  #HARDWARE INPUT   #      # CiA402  #       #Motion #     #  CiA402  #      #  Hardware Output  #\n
-  #  like           #-->>--#read_all #-->>>--#Pids   #-->--#write_all #-->>--#        like       #\n
-  #Ethercat read_all#      #  etc.   #       #       #     #          #      # Ethercat write_all#\n
-  ###################      ###########       #########     ############      #####################\n
+  ###################      ###########       #########     ############      #####################
 
+  #HARDWARE INPUT   #      # CiA402  #       #Motion #     #  CiA402  #      #  Hardware Output  #
 
+  ##  like          #-->>--#read_all #-->>>--#Pids   #-->--#write_all #-->>--#        like       #
+
+  #Ethercat read_all#      #  etc.   #       #       #     #          #      # Ethercat write_all#
+
+  ###################      ###########       #########     ############      #####################
 
 
 Hal Example:
 
 
   #########
-  # Setup
+  #Setup
   #########
   loadrt [KINS]KINEMATICS
   loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
@@ -35,7 +38,7 @@ Hal Example:
   loadrt pid names=x-pid,y-pid,z-pid
 
   ##########################
-  # Functions servo-thread
+  #Functions servo-thread
   ##########################
   addf lcec.read-all servo-thread
   addf cia402.0.read-all servo-thread
