@@ -13,23 +13,12 @@ The concept of integration in the correspondending task should be as following:
 
 
 
-  ###################      ###########       #########     ############      #####################
-
-  #HARDWARE INPUT   #      # CiA402  #       #Motion #     #  CiA402  #      #  Hardware Output  #
-
-  ##  like          #-->>--#read_all #-->>>--#Pids   #-->--#write_all #-->>--#        like       #
-
-  #Ethercat read_all#      #  etc.   #       #       #     #          #      # Ethercat write_all#
-
-  ###################      ###########       #########     ############      #####################
-
+  HARDWARE INPUT-->--CiA402_read-->--Motion-->--CiA402_write-->--Hardware Output
+   (lcec_read)                                                    (lcec_write)
 
 Hal Example:
-
-
-  #########
   #Setup
-  #########
+
   loadrt [KINS]KINEMATICS
   loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
   (loadusr -W lcec_conf ethercat-conf.xml)
@@ -37,9 +26,9 @@ Hal Example:
   loadrt cia402 count=3
   loadrt pid names=x-pid,y-pid,z-pid
 
-  ##########################
+
   #Functions servo-thread
-  ##########################
+
   addf lcec.read-all servo-thread
   addf cia402.0.read-all servo-thread
   addf cia402.1.read-all servo-thread
@@ -51,8 +40,9 @@ Hal Example:
   addf cia402.1.write-all servo-thread
   addf cia402.2.write-all servo-thread
   addf lcec.write-all servo-thread
-  #########################################
+  
   #nets .....
+
 
 
 Modes of Operation: 
