@@ -19,40 +19,39 @@ Hal Example:
 
   #Setup
 
-  loadrt [KINS]KINEMATICS
+    loadrt [KINS]KINEMATICS
 
-  loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+    loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
 
-  (loadusr -W lcec_conf ethercat-conf.xml)
+    (loadusr -W lcec_conf ethercat-conf.xml)
 
-  loadrt lcec
+    loadrt lcec
 
-  loadrt cia402 count=3
+    loadrt cia402 count=3
 
-  loadrt pid names=x-pid,y-pid,z-pid
+    loadrt pid names=x-pid,y-pid,z-pid
 
 
 
   #Functions servo-thread
 
-  addf lcec.read-all servo-thread
+    addf lcec.read-all servo-thread
 
-  addf cia402.0.read-all servo-thread
+    addf cia402.0.read-all servo-thread
 
-  addf cia402.1.read-all servo-thread
+    addf cia402.1.read-all servo-thread
 
-  addf cia402.2.read-all servo-thread
+    addf cia402.2.read-all servo-thread
 
+    addf motion/ PIDs / PCL / etc .
 
-  addf motion/ PIDs / PCL / etc .
+    addf cia402.0.write-all servo-thread
 
-  addf cia402.0.write-all servo-thread
+    addf cia402.1.write-all servo-thread
 
-  addf cia402.1.write-all servo-thread
+    addf cia402.2.write-all servo-thread
 
-  addf cia402.2.write-all servo-thread
-
-  addf lcec.write-all servo-thread
+    addf lcec.write-all servo-thread
 
   
   #nets .....
@@ -86,6 +85,8 @@ Flexibility:
   Even though this component exports many pins, you can choose which functions you want to use:
 
   If you would like to use the CiA State Machine, connect Statusword and Controlword.
+
   For single use of the scaling function connect only the fb and cmd pins from position or velocity.
+
   If no Drives homing is needed, let the Pins unconnected.
 
