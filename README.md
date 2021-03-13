@@ -20,26 +20,40 @@ Hal Example:
   #Setup
 
   loadrt [KINS]KINEMATICS
+
   loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS
+
   (loadusr -W lcec_conf ethercat-conf.xml)
+
   loadrt lcec
+
   loadrt cia402 count=3
+
   loadrt pid names=x-pid,y-pid,z-pid
+
 
 
   #Functions servo-thread
 
   addf lcec.read-all servo-thread
+
   addf cia402.0.read-all servo-thread
+
   addf cia402.1.read-all servo-thread
+
   addf cia402.2.read-all servo-thread
+
 
   addf motion/ PIDs / PCL / etc .
 
   addf cia402.0.write-all servo-thread
+
   addf cia402.1.write-all servo-thread
+
   addf cia402.2.write-all servo-thread
+
   addf lcec.write-all servo-thread
+
   
   #nets .....
 
