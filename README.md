@@ -12,11 +12,11 @@ The concept of integration in the correspondending task should be as following:
 
 
 
-  ###################      ###########       #########     ############      #####################
-  #HARDWARE INPUT   #      # CiA402  #       #Motion #     #  CiA402  #      #  Hardware Output  #
-  #  like           #-->>--#read_all #-->>>--#Pids   #-->--#write_all #-->>--#        like       #
-  #Ethercat read_all#      #  etc.   #       #       #     #          #      # Ethercat write_all#
-  ###################      ###########       #########     ############      #####################
+  ###################      ###########       #########     ############      #####################\n
+  #HARDWARE INPUT   #      # CiA402  #       #Motion #     #  CiA402  #      #  Hardware Output  #\n
+  #  like           #-->>--#read_all #-->>>--#Pids   #-->--#write_all #-->>--#        like       #\n
+  #Ethercat read_all#      #  etc.   #       #       #     #          #      # Ethercat write_all#\n
+  ###################      ###########       #########     ############      #####################\n
 
 
 
