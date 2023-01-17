@@ -1,0 +1,7 @@
+# turn off spindle, mist and coolant
+#unlinkp lcec.0.3.out-01
+#unlinkp lcec.0.3.out-02
+#unlinkp lcec.0.3.out-03
+#setp lcec.0.3.out-01 0
+#setp lcec.0.3.out-02 0
+#setp lcec.0.3.out-03 0

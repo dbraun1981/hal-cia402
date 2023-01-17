@@ -1,0 +1,72 @@
+###########################################################
+#
+# CIA 402 example snippet Hal 
+#
+###########################################################
+
+###########################################################
+# Setup
+###########################################################
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS 
+
+loadusr -W lcec_conf ethercat-conf.xml
+loadrt lcec
+loadrt cia402 count=3
+loadrt pid names=x-pid,y-pid,z-pid
+
+
+###########################################################
+# Functions servo-thread
+###########################################################
+
+addf lcec.read-all servo-thread
+addf cia402.0.read-all servo-thread
+addf cia402.1.read-all servo-thread
+addf cia402.2.read-all servo-thread
+
+addf motion-command-handler servo-thread
+addf motion-controller servo-thread
+
+addf x-pid.do-pid-calcs servo-thread
+addf y-pid.do-pid-calcs servo-thread
+addf z-pid.do-pid-calcs servo-thread
+
+addf cia402.0.write-all servo-thread
+addf cia402.1.write-all servo-thread
+addf cia402.2.write-all servo-thread
+addf lcec.write-all servo-thread
+
+#########################################
+#nets
+#########################################
+net emc-enable => iocontrol.0.emc-enable-in
+sets emc-enable 1
+
+#config
+setp cia402.0.csp-mode 1
+setp cia402.0.pos-scale 3600
+
+#from servo(ethercat) to cia402
+net x-statusword      lcec.0.0.cia-statusword => cia402.0.statusword
+net x-opmode-display  lcec.0.0.opmode-display => cia402.0.opmode-display
+net x-drv-act-pos     lcec.0.0.actual-position => cia402.0.drv-actual-position
+net x-drv-act-velo    lcec.0.0.actual-velocity => cia402.0.drv-actual-velocity
+
+#from cia402 to servo(ethercat) 
+net x-controlword         cia402.0.controlword => lcec.0.0.cia-controlword
+net x-modes-of-operation  cia402.0.opmode => lcec.0.0.opmode
+net x-drv-target-pos      cia402.0.drv-target-position => lcec.0.0.target-position
+net x-drv-target-velo     cia402.0.drv-target-velocity => lcec.0.0.target-velocity
+
+#from motion to cia
+net x-enable    <= joint.0.amp-enable-out => cia402.0.enable
+net x-amp-fault => joint.0.amp-fault-in   <= cia402.0.drv-fault
+net x-pos-cmd   <= joint.0.motor-pos-cmd  => cia402.0.pos-cmd
+net x-pos-fb    => joint.0.motor-pos-fb   <= cia402.0.pos-fb
+
+#homing
+net x-home-index <= joint.0.index-enable  => cia402.0.home
+
+

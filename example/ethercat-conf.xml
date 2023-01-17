@@ -1,22 +1,47 @@
 <masters>
-  <master idx="0" appTimePeriod="1000000" refClockSyncCycles="1">
-    <slave idx="0" type="generic" vid="0000026C" pid="0000003C" configPdos="true">
+  <master idx="0" appTimePeriod="1000000" refClockSyncCycles="-1">
+	  <slave idx="0" type="EK1100" name="DE"/>
+    <slave idx="1" type="EL1004" name="DI1"/>
+    <slave idx="2" type="EL2004" name="DO1"/>
+    <slave idx="3" type="generic" vid="00000477" pid="10305070" configPdos="true" name="x">
       <dcConf assignActivate="300" sync0Cycle="*1" sync0Shift="0"/>
       <syncManager idx="2" dir="out">
         <pdo idx="1600">
           <pdoEntry idx="6040" subIdx="00" bitLen="16" halPin="cia-controlword" halType="u32"/>
-          <pdoEntry idx="6060" subIdx="00" bitLen="8" halPin="opmode" halType="s32"/>
           <pdoEntry idx="607A" subIdx="00" bitLen="32" halPin="target-position" halType="s32"/>
           <pdoEntry idx="60FF" subIdx="00" bitLen="32" halPin="target-velocity" halType="s32"/>
+          <pdoEntry idx="6071" subIdx="00" bitLen="32" halPin="target-torque" halType="s32"/>
+          <pdoEntry idx="6060" subIdx="00" bitLen="8" halPin="opmode" halType="s32"/>
         </pdo>
       </syncManager>
       <syncManager idx="3" dir="in">
         <pdo idx="1a00">
           <pdoEntry idx="6041" subIdx="00" bitLen="16" halPin="cia-statusword" halType="u32"/>
-          <pdoEntry idx="6061" subIdx="00" bitLen="8" halPin="opmode-display" halType="s32"/>
           <pdoEntry idx="6064" subIdx="00" bitLen="32" halPin="actual-position" halType="s32"/>
           <pdoEntry idx="606C" subIdx="00" bitLen="32" halPin="actual-velocity" halType="s32"/>
           <pdoEntry idx="6077" subIdx="00" bitLen="32" halPin="actual-torque" halType="s32"/>
+          <pdoEntry idx="6061" subIdx="00" bitLen="8" halPin="opmode-display" halType="s32"/>
+        </pdo>
+      </syncManager>
+    </slave>
+    <slave idx="4" type="generic" vid="00000477" pid="10305070" configPdos="true" name="y">
+      <dcConf assignActivate="300" sync0Cycle="*1" sync0Shift="0"/>
+      <syncManager idx="2" dir="out">
+        <pdo idx="1600">
+          <pdoEntry idx="6040" subIdx="00" bitLen="16" halPin="cia-controlword" halType="u32"/>
+          <pdoEntry idx="607A" subIdx="00" bitLen="32" halPin="target-position" halType="s32"/>
+          <pdoEntry idx="60FF" subIdx="00" bitLen="32" halPin="target-velocity" halType="s32"/>
+          <pdoEntry idx="6071" subIdx="00" bitLen="32" halPin="target-torque" halType="s32"/>
+          <pdoEntry idx="6060" subIdx="00" bitLen="8" halPin="opmode" halType="s32"/>
+        </pdo>
+      </syncManager>
+      <syncManager idx="3" dir="in">
+        <pdo idx="1a00">
+          <pdoEntry idx="6041" subIdx="00" bitLen="16" halPin="cia-statusword" halType="u32"/>
+          <pdoEntry idx="6064" subIdx="00" bitLen="32" halPin="actual-position" halType="s32"/>
+          <pdoEntry idx="606C" subIdx="00" bitLen="32" halPin="actual-velocity" halType="s32"/>
+          <pdoEntry idx="6077" subIdx="00" bitLen="32" halPin="actual-torque" halType="s32"/>
+          <pdoEntry idx="6061" subIdx="00" bitLen="8" halPin="opmode-display" halType="s32"/>
         </pdo>
       </syncManager>
     </slave>
