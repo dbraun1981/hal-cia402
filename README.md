@@ -66,6 +66,10 @@ Modes of Operation:
 
   Mode changing in runtime is currently not supported, to avoid
   unwanted behaviour.
+  
+  Additionally, you'll need to set a velocity scaling factor in your hal:
+    
+    setp cia402.0.velo-scale 1000
 
 Homing:
 
