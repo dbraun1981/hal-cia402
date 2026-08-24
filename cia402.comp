@@ -258,8 +258,18 @@ FUNCTION(write_all) {
   enable_edge = enable && !enable_old;
   enable_old = enable;
 
-  // write control register
-  controlword = (1 << 2); // quick stop is not supported
+  // write control register.
+  //
+  // Idle word is 0x0000 -- *disable voltage*, the canonical CiA-402 command.
+  // It used to be 0x0004 (the quick-stop bit alone), which matches disable
+  // voltage by the state-machine mask (bit 1 = 0) but is not the command
+  // word the profile lists. Drives differ on whether they accept it: an
+  // Inovance IS620N drops to statusword 0x0250 (switch on disabled), while
+  // a Wecon VD3E stays in 0x0231 (ready to switch on, power stage still
+  // fed) for as long as 0x0004 is held, and moves to 0x0250 the moment a
+  // bare 0x0000 arrives. The quick-stop bit is raised below instead, where
+  // the state machine actually needs it -- while `enable` is high.
+  controlword = 0; // idle: disable voltage
   if (stat_fault) {
     home = 0; 
     if (fault_reset) {
@@ -271,6 +281,7 @@ FUNCTION(write_all) {
     }
   } else {
     if (enable) {
+      controlword |= (1 << 2); // quick stop is not supported
       controlword |= (1 << 1); // enable voltage
       if (stat_switchon_ready) {
         controlword |= (1 << 0); // switch on
