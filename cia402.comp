@@ -136,10 +136,10 @@ pin out bit opmode_cyclic_velocity  "Drive in Mode Cyclic synchronus Velocity";
 pin in bit fault_reset  "true, sends fault reset command to the Drive";
 
 //parameters
-param rw float pos_scale    "increments per machine unit";
-param rw float velo_scale   "velocity in machine units per 1 Motor revolution";
-param rw bit auto_fault_reset "true resets an actual Drive Fault automatically at the next enable Signal";
-param rw bit csp_mode "true= CS Position Mode, false= CS Velocity Mode, is only recognized at Linuxcnc Startup, default true";
+param rw float pos_scale = 1.0 "increments per machine unit";
+param rw float velo_scale = 1.0 "velocity in machine units per 1 Motor revolution";
+param rw bit auto_fault_reset = 1 "true resets an actual Drive Fault automatically at the next enable Signal";
+param rw bit csp_mode = 1 "true= CS Position Mode, false= CS Velocity Mode, is only recognized at Linuxcnc Startup, default true";
 
 //internals
 variable float pos_scale_old;
@@ -168,80 +168,83 @@ option extra_setup yes;
 #define OPMODE_NONE 0
 
 EXTRA_SETUP ()  {
-  // initialize variables
-  pos_scale = 1.0;
-  pos_scale_old = pos_scale + 1.0;
+  // initialize variables.  On LinuxCNC 2.10 this runs before the pins and
+  // params exist, so their defaults (pos_scale, velo_scale = 1.0,
+  // auto_fault_reset, csp_mode = 1) are set in their declarations.  The
+  // *_old values differ from the default scale to force the first update.
+  pos_scale_old = 2.0;
   pos_scale_rcpt = 1.0;
-  velo_scale = 1.0;
-  velo_scale_old = velo_scale + 1.0;
+  velo_scale_old = 2.0;
   velo_scale_rcpt = 1.0;
-  auto_fault_reset = 1;
-  csp_mode = 1; 
   return 0;
 }
 
-void check_scales(hal_float_t *scale,float *scale_old, double *scale_rcpt) {
+// Returns the scale to use: 1.0 if it is too small to divide by.  Pins and
+// params are not addressable on LinuxCNC 2.10, so the caller writes the
+// result back with <param>_set().
+double check_scale(double scale, float *scale_old, double *scale_rcpt) {
   // check for change in scale value
-  if (*scale != *scale_old) {
+  if (scale != *scale_old) {
     // scale value has changed, test and update it
-    if ((*scale < 1e-20) && (*scale > -1e-20)) {
+    if ((scale < 1e-20) && (scale > -1e-20)) {
       // value too small, divide by zero is a bad thing
-      *scale = 1.0;
+      scale = 1.0;
     }
     // save new scale to detect future changes
-    *scale_old = *scale;
+    *scale_old = scale;
     // we actually want the reciprocal
-    *scale_rcpt = 1.0 / *scale;
+    *scale_rcpt = 1.0 / scale;
   }
+  return scale;
 }
   
 FUNCTION(read_all) {
 
   // check for change in scale value
-  check_scales(&pos_scale, &pos_scale_old, &pos_scale_rcpt);
-  check_scales(&velo_scale, &velo_scale_old, &velo_scale_rcpt);
+  pos_scale_set(check_scale(pos_scale, &pos_scale_old, &pos_scale_rcpt));
+  velo_scale_set(check_scale(velo_scale, &velo_scale_old, &velo_scale_rcpt));
 
   // read position feedback
-  pos_fb = ((double)drv_actual_position) * pos_scale_rcpt;
+  pos_fb_set(((double)drv_actual_position) * pos_scale_rcpt);
 
   // read velocity feedback
-  velocity_fb = ((double)drv_actual_velocity) * velo_scale_rcpt;
+  velocity_fb_set(((double)drv_actual_velocity) * velo_scale_rcpt);
 
   // read Modes of Operation
-  opmode_no_mode = (opmode_display == OPMODE_NONE);
-  opmode_homing = (opmode_display == OPMODE_HOMING);
-  opmode_cyclic_velocity = (opmode_display == OPMODE_CYCLIC_VELOCITY);
-  opmode_cyclic_position = (opmode_display == OPMODE_CYCLIC_POSITION);
+  opmode_no_mode_set((opmode_display == OPMODE_NONE));
+  opmode_homing_set((opmode_display == OPMODE_HOMING));
+  opmode_cyclic_velocity_set((opmode_display == OPMODE_CYCLIC_VELOCITY));
+  opmode_cyclic_position_set((opmode_display == OPMODE_CYCLIC_POSITION));
  
   // read status
-  stat_switchon_ready    = (statusword >> 0) & 1;
-  stat_switched_on       = (statusword >> 1) & 1;
-  stat_op_enabled        = (statusword >> 2) & 1;
-  stat_fault             = (statusword >> 3) & 1;
-  stat_voltage_enabled   = (statusword >> 4) & 1;
-  stat_quick_stop        = (statusword >> 5) & 1;
-  stat_switchon_disabled = (statusword >> 6) & 1;
-  stat_warning           = (statusword >> 7) & 1;
-  stat_remote            = (statusword >> 9) & 1;
+  stat_switchon_ready_set((statusword >> 0) & 1);
+  stat_switched_on_set((statusword >> 1) & 1);
+  stat_op_enabled_set((statusword >> 2) & 1);
+  stat_fault_set((statusword >> 3) & 1);
+  stat_voltage_enabled_set((statusword >> 4) & 1);
+  stat_quick_stop_set((statusword >> 5) & 1);
+  stat_switchon_disabled_set((statusword >> 6) & 1);
+  stat_warning_set((statusword >> 7) & 1);
+  stat_remote_set((statusword >> 9) & 1);
 
   if (opmode_cyclic_position || opmode_cyclic_velocity) {
-    stat_target_reached = (statusword >> 10) & 1;
+    stat_target_reached_set((statusword >> 10) & 1);
     } else {
-      stat_target_reached = 0;
+      stat_target_reached_set(0);
     }
 
   //home states  
   if (opmode_homing) {
-    stat_homed    = ((statusword >> 10) & 1) && ((statusword >> 12) & 1);
-    stat_homing   = !stat_homed && !((statusword >> 10) & 1);
+    stat_homed_set(((statusword >> 10) & 1) && ((statusword >> 12) & 1));
+    stat_homing_set(!stat_homed && !((statusword >> 10) & 1));
   }
 
   // update fault output
   if (auto_fault_reset_delay > 0) {
     auto_fault_reset_delay -= period;
-    drv_fault = 0;
+    drv_fault_set(0);
   } else {
-    drv_fault = stat_fault && enable;
+    drv_fault_set(stat_fault && enable);
   }
 }
 
@@ -259,52 +262,52 @@ FUNCTION(write_all) {
   enable_old = enable;
 
   // write control register
-  controlword = (1 << 2); // quick stop is not supported
+  controlword_set((1 << 2)); // quick stop is not supported
   if (stat_fault) {
-    home = 0; 
+    home_set(0); 
     if (fault_reset) {
-      controlword |= (1 << 7); // fault reset
+      controlword_set(controlword | ((1 << 7))); // fault reset
     }
     if (auto_fault_reset && enable_edge) {
       auto_fault_reset_delay = FAULT_AUTORESET_DELAY_NS;
-      controlword |= (1 << 7); // fault reset
+      controlword_set(controlword | ((1 << 7))); // fault reset
     }
   } else {
     if (enable) {
-      controlword |= (1 << 1); // enable voltage
+      controlword_set(controlword | ((1 << 1))); // enable voltage
       if (stat_switchon_ready) {
-        controlword |= (1 << 0); // switch on
+        controlword_set(controlword | ((1 << 0))); // switch on
         if (stat_switched_on) {
-          controlword |= (1 << 3); // enable op
+          controlword_set(controlword | ((1 << 3))); // enable op
         }
       }
     }
   }
 
   // write position command
-  drv_target_position = (int32_t) (pos_cmd * pos_scale);
+  drv_target_position_set((int32_t) (pos_cmd * pos_scale));
   // write velocity command
-  drv_target_velocity = (int32_t) (velocity_cmd * velo_scale);
+  drv_target_velocity_set((int32_t) (velocity_cmd * velo_scale));
 
   // reset home command   
   if (home && (stat_homed && !stat_homed_old) && opmode_homing) {
-    home = 0;
+    home_set(0);
   }
   stat_homed_old = stat_homed;  
 
   // OP Mode 
   // set to position mode 
   if (stat_voltage_enabled && !home ) {
-    opmode = OPMODE_CYCLIC_POSITION;
+    opmode_set(OPMODE_CYCLIC_POSITION);
   }
   // set velo mode
   if (stat_voltage_enabled && !pos_mode && !home) {
-    opmode = OPMODE_CYCLIC_VELOCITY;
+    opmode_set(OPMODE_CYCLIC_VELOCITY);
   }
   // mode Home and start homing
   if (home) {
-    opmode = OPMODE_HOMING;
-    controlword |= (home << 4);  
+    opmode_set(OPMODE_HOMING);
+    controlword_set(controlword | ((home << 4)));  
   }
 }
 
