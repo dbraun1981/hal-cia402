@@ -283,7 +283,7 @@ FUNCTION(write_all) {
              if(csp_mode_relative) {
                 controlword |= (1 << 6);
              } else {
-                controlword & ~(1 << 6);
+                controlword &= ~(1 << 6);
              }
           }
         }
