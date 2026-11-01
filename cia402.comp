@@ -140,6 +140,7 @@ param rw float pos_scale    "increments per machine unit";
 param rw float velo_scale   "velocity in machine units per 1 Motor revolution";
 param rw bit auto_fault_reset "true resets an actual Drive Fault automatically at the next enable Signal";
 param rw bit csp_mode "true= CS Position Mode, false= CS Velocity Mode, is only recognized at Linuxcnc Startup, default true";
+param rw bit csp_mode_relative "true= use relative mode instead of absolute mode, this will be set into bit6 of the controlword";
 
 //internals
 variable float pos_scale_old;
@@ -276,6 +277,15 @@ FUNCTION(write_all) {
         controlword |= (1 << 0); // switch on
         if (stat_switched_on) {
           controlword |= (1 << 3); // enable op
+          if (csp_mode == 1) {
+             controlword |= (1 << 4); // New set-point
+             controlword |= (1 << 5); // Update immediatley
+             if(csp_mode_relative) {
+                controlword |= (1 << 6);
+             } else {
+                controlword &= ~(1 << 6);
+             }
+          }
         }
       }
     }
